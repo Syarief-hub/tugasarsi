@@ -55,17 +55,17 @@ class SchedulingServiceTest extends TestCase
         $this->assertTrue($kebutuhan->end_date->equalTo(Carbon::parse('2026-07-06')));
 
         // Analisis Sistem: SS+3 dari Analisis Kebutuhan -> mulai Jumat 03/07,
-        // durasi 5 hari kerja -> 03, 06, 07, 08, 09 Juli (selesai 09/07).
+        // durasi 8 hari kerja -> 03, 06, 07, 08, 09, 10, 13, 14 Juli (selesai 14/07).
         $sistem = $tasks->get('Analisis Sistem')->fresh();
         $this->assertTrue($sistem->start_date->equalTo(Carbon::parse('2026-07-03')));
-        $this->assertTrue($sistem->end_date->equalTo(Carbon::parse('2026-07-09')));
+        $this->assertTrue($sistem->end_date->equalTo(Carbon::parse('2026-07-14')));
 
-        // Perancangan: SS+5 dari Analisis Sistem -> mulai 10/07, durasi 6 hari
-        // kerja: 10, 13, 14, 15, 16, [17 LIBUR], 20 -> selesai Senin 20/07.
+        // Perancangan: SS+5 dari Analisis Sistem -> mulai 15/07, durasi 7 hari
+        // kerja: 15, 16, 17 LIBUR, 20, 21, 22, 23 -> selesai Selasa 23/07.
         // Bukti libur custom 17 Juli 2026 dilewati.
         $perancangan = $tasks->get('Perancangan')->fresh();
-        $this->assertTrue($perancangan->start_date->equalTo(Carbon::parse('2026-07-10')));
-        $this->assertTrue($perancangan->end_date->equalTo(Carbon::parse('2026-07-20')));
+        $this->assertTrue($perancangan->start_date->equalTo(Carbon::parse('2026-07-15')));
+        $this->assertTrue($perancangan->end_date->equalTo(Carbon::parse('2026-07-23')));
     }
 
     public function test_custom_holiday_17_july_moves_end_date_from_17_to_20_july(): void
@@ -76,18 +76,18 @@ class SchedulingServiceTest extends TestCase
         $perancangan = $project->tasks()->where('name', 'Perancangan')->firstOrFail();
 
         // Jadwalkan ulang dulu (SS+5 dari Analisis Sistem) tanpa hari libur:
-        // mulai 10/07 + 6 hari kerja = 10, 13, 14, 15, 16, 17 Juli.
+        // mulai 10/07 + 7 hari kerja = 10, 13, 14, 15, 16, 17, 20 Juli.
         $this->scheduling->reschedule($project);
         $perancangan = $perancangan->fresh();
         $this->assertTrue($perancangan->start_date->equalTo(Carbon::parse('2026-07-10')));
-        $this->assertTrue($perancangan->end_date->equalTo(Carbon::parse('2026-07-17')));
+        $this->assertTrue($perancangan->end_date->equalTo(Carbon::parse('2026-07-20')));
 
         Holiday::create(['name' => 'Libur Custom', 'date' => '2026-07-17', 'repeats' => 'none']);
 
         // Dengan libur 17 Juli: hari kerja keenam bergeser ke 20 Juli.
         // (end_date diakses lewat instance segar karena hasil akses sebelumnya
         // pada instance lama sudah ter-cache saat libur belum ada.)
-        $this->assertTrue($perancangan->fresh()->end_date->equalTo(Carbon::parse('2026-07-20')));
+        $this->assertTrue($perancangan->fresh()->end_date->equalTo(Carbon::parse('2026-07-23')));
     }
 
     /* ------------------------------------------------------------------ */
