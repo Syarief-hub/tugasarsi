@@ -10,6 +10,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TaskDependency extends Model
 {
     /**
+     * Tipe dependensi yang didukung beserta label berbahasa Indonesia.
+     *
+     * @var array<string, string>
+     */
+    public const TYPES = [
+        'FS' => 'Finish-Start (FS)',
+        'SS' => 'Start-Start (SS)',
+        'FF' => 'Finish-Finish (FF)',
+        'SF' => 'Start-Finish (SF)',
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

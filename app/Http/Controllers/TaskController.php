@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\TaskRequest;
 use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class TaskController extends Controller
@@ -40,17 +39,25 @@ class TaskController extends Controller
             'project' => $project,
             'task' => $task,
             'parents' => $this->parentOptions($project),
+            'predecessorOptions' => $this->predecessorOptions($project),
+            'dependencies' => collect(),
         ]);
     }
 
     /**
-     * Menyimpan tugas baru ke dalam proyek.
+     * Menyimpan tugas baru ke dalam proyek beserta dependensinya.
      */
-    public function store(Request $request, Project $project): RedirectResponse
+    public function store(TaskRequest $request, Project $project): RedirectResponse
     {
-        $data = $this->validated($request, $project);
+        $data = $request->validated();
+        $dependencies = $data['dependencies'] ?? [];
+        unset($data['dependencies']);
 
-        $project->tasks()->create($data);
+        $data['parent_id'] = $data['parent_id'] ?? null;
+
+        if ($task = $project->tasks()->create($data)) {
+            $this->syncDependencies($task, $dependencies);
+        }
 
         return redirect()
             ->route('projects.tasks.index', $project)
@@ -81,7 +88,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Menampilkan form edit tugas.
+     * Menampilkan form edit tugas termasuk dependensi yang tersimpan.
      */
     public function edit(Project $project, Task $task): View
     {
@@ -89,17 +96,28 @@ class TaskController extends Controller
             'project' => $project,
             'task' => $task,
             'parents' => $this->parentOptions($project, $task),
+            'predecessorOptions' => $this->predecessorOptions($project, $task),
+            'dependencies' => $task->dependencies()->orderBy('id')->get(),
         ]);
     }
 
     /**
-     * Memperbarui tugas.
+     * Memperbarui tugas beserta dependensinya (sinkron penuh dengan input form).
      */
-    public function update(Request $request, Project $project, Task $task): RedirectResponse
+    public function update(TaskRequest $request, Project $project, Task $task): RedirectResponse
     {
-        $data = $this->validated($request, $project, $task);
+        $data = $request->validated();
+        $dependencies = $data['dependencies'] ?? [];
+        unset($data['dependencies']);
+
+        $data['parent_id'] = $data['parent_id'] ?? null;
+
+        if ((int) $data['parent_id'] === (int) $task->getKey()) {
+            $data['parent_id'] = null;
+        }
 
         $task->update($data);
+        $this->syncDependencies($task, $dependencies);
 
         return redirect()
             ->route('projects.tasks.index', $project)
@@ -107,7 +125,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Menghapus tugas.
+     * Menghapus tugas (dependensi turut terhapus lewat constraint onDelete cascade).
      */
     public function destroy(Project $project, Task $task): RedirectResponse
     {
@@ -116,53 +134,6 @@ class TaskController extends Controller
         return redirect()
             ->route('projects.tasks.index', $project)
             ->with('success', 'Tugas berhasil dihapus.');
-    }
-
-    /**
-     * Aturan validasi bersama untuk store dan update.
-     *
-     * @return array<string, mixed>
-     */
-    private function validated(Request $request, Project $project, ?Task $task = null): array
-    {
-        $labels = [
-            'name' => 'Nama tugas',
-            'start_date' => 'Tanggal mulai',
-            'duration' => 'Durasi (hari)',
-            'priority' => 'Prioritas',
-            'color' => 'Warna',
-            'parent_id' => 'Tugas induk',
-        ];
-
-        $data = $request->validate(
-            [
-                'name' => ['required', 'string', 'max:255'],
-                'start_date' => ['required', 'date'],
-                'duration' => ['required', 'integer', 'min:1', 'max:3650'],
-                'priority' => ['required', Rule::in(['rendah', 'normal', 'tinggi'])],
-                'color' => ['required', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-                'parent_id' => [
-                    'nullable',
-                    'integer',
-                    Rule::exists('tasks', 'id')->where('project_id', $project->id),
-                ],
-            ],
-            array_merge(
-                $this->indonesianMessages($labels),
-                [
-                    'priority.in' => 'Prioritas harus berupa rendah, normal, atau tinggi.',
-                    'color.regex' => 'Warna harus berupa kode heksadesimal, contoh: #3b82f6.',
-                ]
-            )
-        );
-
-        $data['parent_id'] = $data['parent_id'] ?? null;
-
-        if ($task !== null && (int) $data['parent_id'] === (int) $task->id) {
-            $data['parent_id'] = null;
-        }
-
-        return $data;
     }
 
     /**
@@ -177,5 +148,48 @@ class TaskController extends Controller
             ->orderBy('start_date')
             ->orderBy('id')
             ->get();
+    }
+
+    /**
+     * Daftar predecessor yang boleh dipilih: tugas lain dalam proyek yang sama.
+     *
+     * @return Collection<int, Task>
+     */
+    private function predecessorOptions(Project $project, ?Task $task = null): Collection
+    {
+        return $project->tasks()
+            ->when($task, fn ($query) => $query->whereKeyNot($task->getKey()))
+            ->orderBy('start_date')
+            ->orderBy('id')
+            ->get(['id', 'name', 'start_date', 'duration', 'parent_id']);
+    }
+
+    /**
+     * Menyinkronkan baris dependensi dari form dengan tabel task_dependencies.
+     * Baris lama yang tidak ada di form dihapus, baris baru ditambahkan, dan
+     * baris lama yang berubah diperbarui.
+     *
+     * @param  array<int, array{predecessor_id: string, type: string, delay: int|string}>  $rows
+     */
+    private function syncDependencies(Task $task, array $rows): void
+    {
+        $sync = [];
+
+        foreach ($rows as $row) {
+            $predecessorId = (int) ($row['predecessor_id'] ?? 0);
+
+            if ($predecessorId <= 0) {
+                continue;
+            }
+
+            $sync[$predecessorId] = [
+                'type' => $row['type'],
+                'delay' => (int) ($row['delay'] ?? 0),
+            ];
+        }
+
+        // predecessors() adalah BelongsToMany dengan pivot type/delay,
+        // kunci array = id predecessor sehingga sinkron penuh dengan form.
+        $task->predecessors()->sync($sync);
     }
 }

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'organization', 'website', 'description'])]
+#[Fillable(['name', 'organization', 'website', 'description', 'weekend_mode', 'holiday_mode'])]
 class Project extends Model
 {
     public function tasks(): HasMany

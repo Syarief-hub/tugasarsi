@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
-#[Fillable(['name', 'date'])]
+#[Fillable(['name', 'date', 'repeats'])]
 class Holiday extends Model
 {
     /**

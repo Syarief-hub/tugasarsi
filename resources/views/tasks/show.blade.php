@@ -46,7 +46,8 @@
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Durasi</p>
-            <p class="mt-2 text-lg font-semibold text-slate-900">{{ $task->duration }} hari</p>
+            <p class="mt-2 text-lg font-semibold text-slate-900">{{ $task->duration }} hari kerja</p>
+            <p class="mt-1 text-xs text-slate-500">Sabtu-Minggu dan hari libur proyek dilewati.</p>
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tanggal Selesai</p>
@@ -126,7 +127,8 @@
                                 {{ $predecessor->name }}
                             </a>
                             <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                {{ $predecessor->pivot->type }} &middot; delay {{ $predecessor->pivot->delay }} hari
+                                {{ \App\Models\TaskDependency::TYPES[$predecessor->pivot->type] ?? $predecessor->pivot->type }}
+                                &middot; delay {{ $predecessor->pivot->delay }} hari kerja
                             </span>
                         </li>
                     @endforeach
@@ -150,7 +152,8 @@
                                 {{ $successor->name }}
                             </a>
                             <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                {{ $successor->pivot->type }} &middot; delay {{ $successor->pivot->delay }} hari
+                                {{ \App\Models\TaskDependency::TYPES[$successor->pivot->type] ?? $successor->pivot->type }}
+                                &middot; delay {{ $successor->pivot->delay }} hari kerja
                             </span>
                         </li>
                     @endforeach

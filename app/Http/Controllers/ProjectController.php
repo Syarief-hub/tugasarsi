@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Services\SchedulingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ProjectController extends Controller
@@ -108,6 +110,35 @@ class ProjectController extends Controller
         return redirect()
             ->route('projects.show', $project)
             ->with('success', 'Proyek berhasil diperbarui.');
+    }
+
+    /**
+     * Menjadwalkan ulang seluruh tugas proyek berdasarkan dependensi,
+     * lalu menampilkan jalur kritis (CPM).
+     */
+    public function schedule(Project $project, SchedulingService $scheduling): RedirectResponse
+    {
+        try {
+            $result = $scheduling->reschedule($project);
+        } catch (ValidationException $exception) {
+            return redirect()
+                ->route('projects.show', $project)
+                ->withErrors($exception->errors());
+        }
+
+        $message = sprintf('%d tugas berhasil dijadwalkan ulang.', $result['rescheduled']);
+
+        if ($result['critical'] !== []) {
+            $message .= sprintf(
+                ' Jalur kritis: %s (%d hari kerja).',
+                implode(' -> ', $result['critical']),
+                $result['duration']
+            );
+        }
+
+        return redirect()
+            ->route('projects.show', $project)
+            ->with('success', $message);
     }
 
     /**

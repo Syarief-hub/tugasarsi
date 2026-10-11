@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SchedulingService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -26,7 +27,8 @@ class Task extends Model
     }
 
     /**
-     * Tanggal selesai dihitung dari tanggal mulai + durasi (hari).
+     * Tanggal selesai dihitung dari tanggal mulai + durasi dalam HARI KERJA
+     * (Sabtu-Minggu dan hari libur dilewati sesuai mode proyek).
      */
     protected function endDate(): Attribute
     {
@@ -35,7 +37,15 @@ class Task extends Model
                 return null;
             }
 
-            return $this->start_date->copy()->addDays(max((int) $this->duration, 1) - 1);
+            $duration = max((int) $this->duration, 1);
+            $project = $this->project;
+
+            if ($project === null) {
+                return $this->start_date->copy()->addDays($duration - 1);
+            }
+
+            return app(SchedulingService::class)
+                ->calculateEndDate($project, $this->start_date, $duration);
         });
     }
 

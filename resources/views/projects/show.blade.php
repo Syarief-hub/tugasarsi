@@ -15,6 +15,13 @@
             @endif
         </div>
         <div class="flex flex-wrap gap-2">
+            <form action="{{ route('projects.schedule', $project) }}" method="POST">
+                @csrf
+                <button type="submit"
+                        class="inline-flex items-center rounded-lg border border-indigo-600 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-100">
+                    Jadwalkan ulang
+                </button>
+            </form>
             <a href="{{ route('projects.edit', $project) }}"
                class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
                 Edit Proyek
@@ -62,7 +69,10 @@
 
     <div class="mt-8">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold text-slate-900">Tugas</h2>
+            <div>
+                <h2 class="text-base font-semibold text-slate-900">Tugas</h2>
+                <p class="mt-0.5 text-xs text-slate-500">Tanggal mulai dan selesai dihitung dalam hari kerja (Sabtu-Minggu dan hari libur proyek dilewati).</p>
+            </div>
             <div class="flex flex-wrap gap-2 text-sm">
                 <a href="{{ route('projects.tasks.index', $project) }}" class="font-medium text-indigo-600 hover:text-indigo-800">Lihat semua tugas</a>
                 <a href="{{ route('projects.tasks.create', $project) }}" class="font-medium text-slate-600 hover:text-slate-900">Tambah tugas</a>
@@ -80,7 +90,7 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Nama Tugas</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Mulai</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Durasi</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Durasi (hari kerja)</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Selesai</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Prioritas</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Aksi</th>
@@ -99,7 +109,7 @@
                                     </a>
                                 </td>
                                 <td class="px-4 py-3 text-slate-600">{{ $task->start_date->format('d/m/Y') }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ $task->duration }} hari</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $task->duration }} hari kerja</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $task->end_date->format('d/m/Y') }}</td>
                                 <td class="px-4 py-3">@include('partials.priority', ['priority' => $task->priority])</td>
                                 <td class="px-4 py-3">

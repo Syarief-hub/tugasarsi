@@ -31,6 +31,15 @@ Route::resource('projects', ProjectController::class);
 
 /*
 |--------------------------------------------------------------------------
+| Penjadwalan ulang (SchedulingService)
+|--------------------------------------------------------------------------
+*/
+
+Route::post('projects/{project}/schedule', [ProjectController::class, 'schedule'])
+    ->name('projects.schedule');
+
+/*
+|--------------------------------------------------------------------------
 | Tugas & Resource (bersarang di dalam proyek)
 |--------------------------------------------------------------------------
 |
