@@ -31,6 +31,18 @@ Route::resource('projects', ProjectController::class);
 
 /*
 |--------------------------------------------------------------------------
+| Gantt chart per proyek
+|--------------------------------------------------------------------------
+|
+| Timeline SVG dirender server-side di Blade (tanpa library chart).
+|
+*/
+
+Route::get('projects/{project}/gantt', [ProjectController::class, 'gantt'])
+    ->name('projects.gantt');
+
+/*
+|--------------------------------------------------------------------------
 | Penjadwalan ulang (SchedulingService)
 |--------------------------------------------------------------------------
 */

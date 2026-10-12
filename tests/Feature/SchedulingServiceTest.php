@@ -60,15 +60,15 @@ class SchedulingServiceTest extends TestCase
         $this->assertTrue($sistem->start_date->equalTo(Carbon::parse('2026-07-03')));
         $this->assertTrue($sistem->end_date->equalTo(Carbon::parse('2026-07-14')));
 
-        // Perancangan: SS+5 dari Analisis Sistem -> mulai 15/07, durasi 7 hari
-        // kerja: 15, 16, 17 LIBUR, 20, 21, 22, 23 -> selesai Selasa 23/07.
-        // Bukti libur custom 17 Juli 2026 dilewati.
+        // Perancangan: SS+5 dari Analisis Sistem (mulai 03/07) -> mulai Jumat
+        // 10/07, durasi 7 hari kerja: 10, 13, 14, 15, 16, 17 LIBUR, 20, 21
+        // -> selesai Selasa 21/07. Bukti libur custom 17 Juli 2026 dilewati.
         $perancangan = $tasks->get('Perancangan')->fresh();
-        $this->assertTrue($perancangan->start_date->equalTo(Carbon::parse('2026-07-15')));
-        $this->assertTrue($perancangan->end_date->equalTo(Carbon::parse('2026-07-23')));
+        $this->assertTrue($perancangan->start_date->equalTo(Carbon::parse('2026-07-10')));
+        $this->assertTrue($perancangan->end_date->equalTo(Carbon::parse('2026-07-21')));
     }
 
-    public function test_custom_holiday_17_july_moves_end_date_from_17_to_20_july(): void
+    public function test_custom_holiday_17_july_moves_end_date_from_20_to_21_july(): void
     {
         $this->seed(ProjectSeeder::class);
 
@@ -84,10 +84,11 @@ class SchedulingServiceTest extends TestCase
 
         Holiday::create(['name' => 'Libur Custom', 'date' => '2026-07-17', 'repeats' => 'none']);
 
-        // Dengan libur 17 Juli: hari kerja keenam bergeser ke 20 Juli.
+        // Dengan libur 17 Juli: hari kerja keenam bergeser ke 20 Juli dan
+        // hari ketujuh ke 21 Juli, sehingga selesai 21/07 (bukan 20/07).
         // (end_date diakses lewat instance segar karena hasil akses sebelumnya
         // pada instance lama sudah ter-cache saat libur belum ada.)
-        $this->assertTrue($perancangan->fresh()->end_date->equalTo(Carbon::parse('2026-07-23')));
+        $this->assertTrue($perancangan->fresh()->end_date->equalTo(Carbon::parse('2026-07-21')));
     }
 
     /* ------------------------------------------------------------------ */
