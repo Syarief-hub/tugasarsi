@@ -30,6 +30,14 @@
                class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
                 Gantt Chart
             </a>
+            <a href="{{ route('projects.pert', $project) }}"
+               class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+                PERT Chart
+            </a>
+            <a href="{{ route('projects.criticalPath', $project) }}"
+               class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+                Analisis Jalur Kritis
+            </a>
             <a href="{{ route('projects.tasks.create', $project) }}"
                class="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700">
                 + Tugas

@@ -43,6 +43,23 @@ Route::get('projects/{project}/gantt', [ProjectController::class, 'gantt'])
 
 /*
 |--------------------------------------------------------------------------
+| PERT chart & analisis jalur kritis manual
+|--------------------------------------------------------------------------
+|
+| Node tugas dirender sebagai SVG server-side di Blade; halaman analisis
+| menampilkan tabel aktivitas, semua jalur, critical path, dan simulasi
+| keterlambatan lewat query string.
+|
+*/
+
+Route::get('projects/{project}/pert', [ProjectController::class, 'pert'])
+    ->name('projects.pert');
+
+Route::get('projects/{project}/critical-path', [ProjectController::class, 'criticalPath'])
+    ->name('projects.criticalPath');
+
+/*
+|--------------------------------------------------------------------------
 | Penjadwalan ulang (SchedulingService)
 |--------------------------------------------------------------------------
 */

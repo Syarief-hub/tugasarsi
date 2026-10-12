@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\Task;
+use App\Services\PertService;
 use App\Services\SchedulingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -253,6 +256,193 @@ class ProjectController extends Controller
             'hasCritical' => array_column($rows, 'is_critical') !== []
                 && in_array(true, array_column($rows, 'is_critical'), true),
             'critical' => $cpm['critical'] ?? [],
+        ]);
+    }
+
+    /**
+     * Halaman PERT chart per proyek.
+     *
+     * Setiap tugas menjadi node (kode, nama, durasi, mulai/selesai) yang
+     * dirender sebagai SVG server-side tanpa library; panah mengikuti
+     * dependensi, dan node pada jalur kritis (slack 0 dari CPM manual)
+     * diberi warna merah.
+     */
+    public function pert(Project $project, PertService $pert): View
+    {
+        $error = null;
+        $analysis = null;
+
+        try {
+            $analysis = $pert->analyze($project);
+        } catch (ValidationException $exception) {
+            $error = implode(' ', Arr::flatten($exception->errors()));
+        }
+
+        $tasks = $project->tasks()
+            ->with('dependencies')
+            ->orderBy('id')
+            ->get()
+            ->keyBy(fn (Task $task) => (int) $task->getKey());
+
+        // Layer node = jarak dependensi terpanjang dari node awal.
+        $preds = [];
+
+        foreach ($tasks as $task) {
+            $preds[(int) $task->getKey()] = $task->dependencies
+                ->pluck('predecessor_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn (int $id) => $tasks->has($id))
+                ->values()
+                ->all();
+        }
+
+        $layer = [];
+
+        foreach ($analysis['order'] ?? [] as $id) {
+            $layer[$id] = 0;
+
+            foreach ($preds[$id] ?? [] as $from) {
+                $layer[$id] = max($layer[$id], ($layer[$from] ?? 0) + 1);
+            }
+        }
+
+        // Geometri dasar node & kanvas.
+        $boxWidth = 172;
+        $boxHeight = 68;
+        $gapX = 84;
+        $gapY = 30;
+        $padding = 26;
+
+        $columns = [];
+        foreach ($layer as $id => $level) {
+            $columns[$level][] = $id;
+        }
+
+        $maxLayer = $columns === [] ? 0 : max(array_keys($columns));
+        $maxRows = $columns === [] ? 0 : max(array_map('count', $columns));
+
+        $svgWidth = $maxLayer * ($boxWidth + $gapX) + $boxWidth + $padding * 2;
+        $svgHeight = max(1, $maxRows) * ($boxHeight + $gapY) - $gapY + $padding * 2;
+
+        $nodes = [];
+        $position = [];
+
+        foreach ($columns as $level => $ids) {
+            foreach (array_values($ids) as $index => $id) {
+                $task = $tasks->get($id);
+                $activity = $analysis['activities'][$id] ?? null;
+
+                $x = $padding + $level * ($boxWidth + $gapX);
+                $y = $padding + $index * ($boxHeight + $gapY);
+
+                $position[$id] = [
+                    'x' => $x,
+                    'y' => $y,
+                    'center_y' => $y + $boxHeight / 2,
+                ];
+
+                $nodes[] = [
+                    'task' => $task,
+                    'x' => $x,
+                    'y' => $y,
+                    'code' => $activity['code'] ?? '?',
+                    'is_critical' => (bool) ($activity['is_critical'] ?? false),
+                    'label' => mb_substr($task->name, 0, 22),
+                    'start' => $task->start_date?->format('d/m'),
+                    'end' => $task->end_date?->format('d/m'),
+                ];
+            }
+        }
+
+        // Panah: dari tepi kanan predecessor ke tepi kiri successor.
+        $arrows = [];
+
+        foreach ($tasks as $id => $task) {
+            foreach ($preds[$id] ?? [] as $from) {
+                if (! isset($position[$from], $position[$id])) {
+                    continue;
+                }
+
+                $x1 = $position[$from]['x'] + $boxWidth;
+                $y1 = $position[$from]['center_y'];
+                $x2 = $position[$id]['x'];
+                $y2 = $position[$id]['center_y'];
+                $midX = (int) (($x1 + $x2) / 2);
+
+                $dependency = $task->dependencies
+                    ->first(fn ($dep) => (int) $dep->predecessor_id === $from);
+
+                $label = $dependency !== null && ($dependency->type !== 'FS' || (int) $dependency->delay > 0)
+                    ? $dependency->type . ((int) $dependency->delay > 0 ? '+' . (int) $dependency->delay : '')
+                    : null;
+
+                $arrows[] = [
+                    'path' => sprintf('M %d %d H %d V %d H %d', $x1, $y1, $midX, $y2, $x2),
+                    'label' => $label,
+                    'label_x' => $midX,
+                    'label_y' => (int) (($y1 + $y2) / 2) - 4,
+                    'is_critical' => ($analysis['activities'][$id]['is_critical'] ?? false)
+                        && ($analysis['activities'][$from]['is_critical'] ?? false),
+                ];
+            }
+        }
+
+        return view('projects.pert', [
+            'project' => $project,
+            'error' => $error,
+            'nodes' => $nodes,
+            'arrows' => $arrows,
+            'svgWidth' => $svgWidth,
+            'svgHeight' => $svgHeight,
+            'boxWidth' => $boxWidth,
+            'boxHeight' => $boxHeight,
+            'hasCritical' => in_array(true, array_column($nodes, 'is_critical'), true),
+        ]);
+    }
+
+    /**
+     * Halaman analisis jalur kritis manual (PERT/CPM).
+     *
+     * Menampilkan tabel aktivitas (kode, durasi, predecessor), semua jalur
+     * dari awal ke akhir beserta totalnya, jalur terpanjang sebagai critical
+     * path beserta durasi proyek, serta form simulasi keterlambatan
+     * (aktivitas + tambahan hari) lewat parameter query GET.
+     */
+    public function criticalPath(Request $request, Project $project, PertService $pert): View|RedirectResponse
+    {
+        try {
+            $analysis = $pert->analyze($project);
+        } catch (ValidationException $exception) {
+            return view('projects.critical-path', [
+                'project' => $project,
+                'analysis' => null,
+                'simulation' => null,
+                'error' => implode(' ', Arr::flatten($exception->errors())),
+            ]);
+        }
+
+        $simulation = null;
+
+        if ($request->filled('activity') || $request->filled('days')) {
+            $data = $request->validate(
+                [
+                    'activity' => ['required', 'integer', Rule::exists('tasks', 'id')->where('project_id', $project->getKey())],
+                    'days' => ['required', 'integer', 'min:0', 'max:365'],
+                ],
+                $this->indonesianMessages([
+                    'activity' => 'Aktivitas',
+                    'days' => 'Tambahan hari',
+                ])
+            );
+
+            $simulation = $pert->simulate($project, (int) $data['activity'], (int) $data['days']);
+        }
+
+        return view('projects.critical-path', [
+            'project' => $project,
+            'analysis' => $analysis,
+            'simulation' => $simulation,
+            'error' => null,
         ]);
     }
 
