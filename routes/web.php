@@ -100,4 +100,5 @@ Route::delete('tasks/{task}/allocations/{resource}', [AllocationController::clas
 |--------------------------------------------------------------------------
 */
 
-Route::resource('holidays', HolidayController::class)->only(['index', 'store', 'destroy']);
+Route::resource('holidays', HolidayController::class)
+    ->only(['index', 'store', 'edit', 'update', 'destroy']);

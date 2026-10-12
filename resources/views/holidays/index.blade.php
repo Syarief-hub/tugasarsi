@@ -62,6 +62,8 @@
                                     <td class="px-4 py-3 text-slate-600">{{ $holiday->date->format('d/m/Y') }}</td>
                                     <td class="px-4 py-3 font-medium text-slate-900">{{ $holiday->name }}</td>
                                     <td class="px-4 py-3 text-right">
+                                        <a href="{{ route('holidays.edit', $holiday) }}"
+                                           class="mr-3 font-medium text-indigo-600 hover:text-indigo-800">Ubah</a>
                                         <form action="{{ route('holidays.destroy', $holiday) }}" method="POST"
                                               onsubmit="return confirm('Hapus hari libur ini?');">
                                             @csrf
