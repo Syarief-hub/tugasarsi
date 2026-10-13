@@ -1,58 +1,61 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Aplikasi Manajemen Proyek (Gantt Chart & Critical Path)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi web manajemen dan penjadwalan proyek perangkat lunak, dibuat untuk
+Tugas Pertemuan 6 (Bab 4) mata kuliah [NAMA MATA KULIAH]. Fitur mengikuti
+materi video tentang perencanaan dan penjadwalan proyek (Gantt chart, PERT,
+dan critical path). Aplikasi dibuat dengan bantuan Freebuff CLI.
 
-## About Laravel
+**Pembuat:** Mohamad Syarief Ali Saman (531424011)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Tampilan Aplikasi
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Gantt Chart
+![Gantt Chart](docs/gantt.png)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Analisis Jalur Kritis
+![Analisis Jalur Kritis](docs/critical-path.png)
 
-## Learning Laravel
+## Fitur
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **Manajemen proyek:** tambah, ubah, dan hapus proyek (nama, organisasi, website, deskripsi).
+- **Manajemen tugas:** nama, tanggal mulai, durasi (hari kerja), prioritas, warna, dan sub-tugas.
+- **Dependensi antar tugas:** Finish-Start, Start-Start, Finish-Finish, dan Start-Finish dengan delay. Dependensi melingkar ditolak.
+- **Manajemen resource:** data anggota tim dan alokasi ke tugas.
+- **Hari libur:** libur sekali (one-off) dan berulang (recurring).
+- **Penjadwalan otomatis:** tanggal tugas dihitung dalam hari kerja (Sabtu-Minggu dan hari libur dilewati) sesuai dependensi.
+- **Gantt chart:** daftar tugas, timeline, panah dependensi, dan tombol Show/Hide Critical Path.
+- **PERT chart:** tugas sebagai node dengan panah urutan.
+- **Analisis jalur kritis manual:** semua jalur, total durasi, critical path, dan simulasi keterlambatan.
+- **Data contoh:** proyek PT XYZ (6 tahap SDLC, 7 anggota tim) dan proyek 10 aktivitas A-J (jalur kritis B-E-H-J = 33 hari).
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Teknologi
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+Laravel 13, PHP 8.3 atau lebih baru, SQLite, Blade, dan Tailwind CSS (CDN).
 
-## Agentic Development
+## Cara Menjalankan
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Prasyarat: PHP 8.3+ dan Composer.
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/Syarief-hub/tugasarsi
+cd [tugasarsi]
+composer install
+copy .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Buka `http://127.0.0.1:8000`. Di Linux atau macOS, gunakan `cp` sebagai pengganti `copy`.
 
-## Contributing
+Jika Laravel menanyakan pembuatan file database SQLite, jawab Yes.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Pengujian
 
-## Code of Conduct
+```bash
+php artisan test
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Catatan
 
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Tampilan memakai Tailwind lewat CDN sehingga membutuhkan koneksi internet.
